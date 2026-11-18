@@ -28,6 +28,14 @@
 
 禁止项自检（脚本核对）：`rounded-none` / `shadow-2xl` / `font-black` / `font-extrabold` / `text-5xl~8xl` 均为 0 处。
 
+## AIPerf 演示入口
+
+- **Tester 目录** → `aiperf` → 详情：展示 AIPerf 的参数、镜像、独占策略。
+- **运行列表** → `aiperf-live-demo` → 点执行链路里的 `aiperf-performance` 节点：
+  展示 RUNNING 状态、`实时` 徽标、TTFT / ITL / 吞吐指标和持续追加的日志。
+
+注意：原型仍是 mock，不会真的调用 AIPerf；真实 Runner 在 `runners/aiperf/`。
+
 ## 截图
 
 | 页面 | 文件 |

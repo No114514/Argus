@@ -185,7 +185,7 @@
       <button class="fde-nav-item" data-nav="runs"><svg class="hg-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 5h10M7 10h10M7 15h10"/><circle cx="4" cy="5" r="1"/><circle cx="4" cy="10" r="1"/><circle cx="4" cy="15" r="1"/></svg>运行列表<span class="fde-nav-badge" id="nav-run-count">5</span></button>
       <button class="fde-nav-item" data-nav="submit"><svg class="hg-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 7v6M7 10h6"/></svg>提交运行</button>
       <div class="hg-nav-group">能力</div>
-      <button class="fde-nav-item" data-nav="testers"><svg class="hg-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3l6 3.2v7.6L10 17l-6-3.2V6.2L10 3z"/><path d="M10 10l6-3.2M10 10v7M10 10L4 6.8"/></svg>Tester 目录<span class="fde-nav-badge">4</span></button>
+      <button class="fde-nav-item" data-nav="testers"><svg class="hg-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3l6 3.2v7.6L10 17l-6-3.2V6.2L10 3z"/><path d="M10 10l6-3.2M10 10v7M10 10L4 6.8"/></svg>Tester 目录<span class="fde-nav-badge">5</span></button>
       <button class="fde-nav-item" data-nav="profiles"><svg class="hg-nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="5" rx="1.5"/><rect x="3" y="11" width="14" height="5" rx="1.5"/><path d="M6 6.5h.01M6 13.5h.01"/></svg>执行环境</button>
     </nav>
     <div class="hg-left-ft">
@@ -252,6 +252,26 @@ const TESTERS = [
       { n: "concurrency", t: "list<int>", req: true, d: "并发档位", def: "—" }
     ],
     env: [{ n: "ENDPOINT_API_KEY", req: false, secret: true, d: "Bearer token" }]
+  },
+  {
+    name: "aiperf", version: "1.0.0", role: "test", on_failure: "continue",
+    exclusive: true, image: "registry.dev.huawei.com/argus/aiperf:1.0.0",
+    desc: "NVIDIA AIPerf 性能压测：chat/completions 流式请求，输出 TTFT、ITL、请求延迟与吞吐；独占 Endpoint，避免与其它 Task 互相干扰。",
+    placeholder: '{"tokenizer":"/models/Qwen3-32B-W8A8","endpoint_type":"chat","streaming":true,"input_tokens_mean":1024,"input_tokens_stddev":0,"output_tokens_mean":16,"output_tokens_stddev":0,"concurrency":1,"request_count":10,"random_seed":11}',
+    params: [
+      { n: "tokenizer", t: "string", req: false, d: "AIPerf --tokenizer；本地路径、HF 模型名或 builtin。缺省用 AG_MODEL_PATH", def: "AG_MODEL_PATH" },
+      { n: "endpoint_type", t: "string", req: false, d: "AIPerf --endpoint-type，默认 chat", def: "chat" },
+      { n: "streaming", t: "boolean", req: false, d: "流式请求；流式才有 TTFT / ITL", def: "true" },
+      { n: "input_tokens_mean", t: "integer", req: false, d: "合成输入 token 均值", def: "1024" },
+      { n: "input_tokens_stddev", t: "integer", req: false, d: "合成输入 token 标准差", def: "0" },
+      { n: "output_tokens_mean", t: "integer", req: false, d: "输出 token 均值", def: "16" },
+      { n: "output_tokens_stddev", t: "integer", req: false, d: "输出 token 标准差", def: "0" },
+      { n: "concurrency", t: "integer", req: false, d: "并发请求数", def: "1" },
+      { n: "request_count", t: "integer", req: false, d: "总请求数", def: "10" },
+      { n: "random_seed", t: "integer", req: false, d: "随机种子", def: "11" },
+      { n: "artifact_subdir", t: "string", req: false, d: "AIPerf artifact 在输出目录下的子目录", def: "aiperf" }
+    ],
+    env: [{ n: "ENDPOINT_API_KEY", req: false, secret: true, d: "Bearer token；可选" }]
   },
   {
     name: "evalscope-acc", version: "2.3.0", role: "test", on_failure: "continue",
@@ -520,6 +540,44 @@ const RUNS = [
       { t: "10:14:19", text: "没有 Deploy 节点：--url / --model_name 由调用方在参数里给出", kind: "" },
       { t: "10:14:25", text: "Pre-Check 通过", kind: "ok" },
       { t: "10:14:26", text: "Task#2 RUNNING", kind: "" }
+    ]
+  },
+  {
+    id: "R-20261118-0042", name: "aiperf-live-demo", status: "TESTING",
+    submitted_by: "演示账号", created: "2026-11-18 10:20", duration: "进行中 1m 42s",
+    endpoint: { url: "http://141.111.32.80:7802/v1", model: "qwen3" },
+    profile: "k8s-npu",
+    env: { LOG_LEVEL: "info" },
+    secrets: [],
+    tasks: [
+      task(1, "precheck", "endpoint-probe", "SUCCEEDED", {
+        duration: "5s",
+        attempts: [{ i: 1, status: "SUCCEEDED", exit: 0, started: "10:20:10", ended: "10:20:15", note: "第 1 次探测通过" }],
+        metrics: [{ name: "precheck_attempts", value: 1, unit: "count", stat: "count", labels: {} }],
+        log: "第 1 次探测：HTTP 200，收到 SSE 数据帧"
+      }),
+      task(2, "aiperf-performance", "aiperf", "RUNNING", {
+        duration: "1m 32s",
+        attempts: [{ i: 1, status: "RUNNING", exit: null, started: "10:20:16", ended: null, note: "AIPerf profile 执行中" }],
+        metrics: [
+          { name: "time_to_first_token", value: 178.4, unit: "ms", stat: "p95", labels: { concurrency: 1, input_len: 1024 } },
+          { name: "inter_token_latency", value: 19.6, unit: "ms", stat: "mean", labels: { concurrency: 1, input_len: 1024 } },
+          { name: "request_latency", value: 512.3, unit: "ms", stat: "mean", labels: { concurrency: 1, input_len: 1024 } },
+          { name: "output_token_throughput", value: 1420.5, unit: "tokens/sec", stat: "mean", labels: { concurrency: 1, input_len: 1024 } },
+          { name: "request_throughput", value: 12.5, unit: "requests/sec", stat: "mean", labels: { concurrency: 1, input_len: 1024 } },
+          { name: "request_count", value: 10, unit: "requests", stat: "count", labels: {} }
+        ],
+        log: "[aiperf] profile --model qwen3 --url http://141.111.32.80:7802 --endpoint-type chat --streaming --concurrency 1 --request-count 10\n"
+          + "[aiperf] 1/10 requests completed | TTFT 181ms | ITL 19.8ms\n"
+          + "[aiperf] 6/10 requests completed | TTFT 176ms | ITL 19.5ms\n"
+          + "[aiperf] artifact: aiperf/profile_export_aiperf.json"
+      })
+    ],
+    events: [
+      { t: "10:20:05", text: "Run 提交：aiperf-live-demo（外接服务）", kind: "" },
+      { t: "10:20:15", text: "Pre-Check 通过", kind: "ok" },
+      { t: "10:20:16", text: "Task#2 RUNNING：AIPerf 正在压测 qwen3", kind: "" },
+      { t: "10:21:20", text: "AIPerf 已完成 6/10 请求，指标持续追加", kind: "" }
     ]
   }
 ];
@@ -1256,7 +1314,9 @@ function renderTaskDetail(run, sel) {
     + '<div class="fde-card-hd ' + toneCls + '"><span class="fde-card-title">' + esc(sel.name) + "</span>"
     + '<span class="fde-tag fde-tag--id">' + esc(sel.tester) + "</span>"
     + (tm.role === "pre_check" ? '<span class="fde-badge fde-badge--primary">pre_check</span>' : "")
-    + '<div class="fde-toolbar-spacer"></div>' + taskBadge(sel.status)
+    + '<div class="fde-toolbar-spacer"></div>'
+    + (sel.status === "RUNNING" ? '<span class="fde-badge fde-badge--info"><span class="live-dot"></span> 实时</span>' : "")
+    + taskBadge(sel.status)
     + '<span class="fde-hint mono-sm">' + esc(sel.duration || "—") + "</span>"
     + ((sel.status === "FAILED" || sel.status === "CANCELED")
         ? '<button class="fde-btn fde-btn--sm" onclick="retryTask(\'' + run.id + "'," + sel.seq + ')">重试此 Task</button>'
@@ -1729,7 +1789,7 @@ function submitRun() {
 
 function viewTesters() {
   document.getElementById("topbar-title").textContent = "Tester 目录";
-  document.getElementById("topbar-sub").textContent = "平台只认 tester.yaml + run.sh，白名单注册";
+  document.getElementById("topbar-sub").textContent = "平台扫描 runners/*/runner.yaml 注册；entry 是唯一执行入口";
   document.getElementById("topbar-actions").innerHTML = "";
 
   var rows = TESTERS.map(function (t) {
@@ -1747,7 +1807,7 @@ function viewTesters() {
   document.getElementById("view").innerHTML =
     '<div class="fde-card"><div class="fde-card-hd hg-blue">'
     + '<span class="fde-card-title">已注册 Tester</span>'
-    + '<span class="fde-card-sub">参数清单仅供 Agent 与维护者阅读；平台不渲染、不校验（§5.4）</span></div>'
+    + '<span class="fde-card-sub">平台按 parameters 校验类型与 required；范围/枚举归 Runner</span></div>'
     + '<div class="fde-card-bd fde-card-bd--flush"><div class="fde-table-wrap"><table class="fde-table">'
     + '<thead><tr><th>名称</th><th>版本</th><th>角色</th><th>失败策略</th><th>独占 Endpoint</th>'
     + '<th style="text-align:right">参数</th><th></th></tr></thead>'
@@ -1755,7 +1815,7 @@ function viewTesters() {
 
   setSide('<div class="fde-card"><div class="fde-card-hd hg-muted"><span class="fde-card-title">注册规则</span></div>'
     + '<div class="fde-card-bd"><p class="fde-hint" style="margin:0; line-height:1.7">'
-    + "只认根目录的 tester.yaml + run.sh；pre_check 必须声明 abort_run。"
+    + "只认 runners/<name>/runner.yaml + entry；pre_check 必须声明 abort_task。"
     + "</p></div></div>");
 }
 
@@ -1775,7 +1835,7 @@ function openTester(name) {
     +     "<dt>on_failure</dt><dd>" + esc(t.on_failure) + "</dd>"
     +     "<dt>独占 Endpoint</dt><dd>" + (t.exclusive ? "true（同 Endpoint 上其它 Task 排队）" : "false") + "</dd>"
     +     "<dt>镜像</dt><dd class=\"mono-sm\" style=\"word-break:break-all\">" + esc(t.image) + "</dd>"
-    +     "<dt>入口</dt><dd class=\"mono-sm\">/tester/run.sh</dd>"
+    +     "<dt>入口</dt><dd class=\"mono-sm\">/runner/run.sh</dd>"
     +   "</dl>"
     +   "<div><div class=\"fde-eyebrow\" style=\"margin-bottom: var(--fde-sp-2)\">参数清单</div>"
     +     '<table class="fde-table fde-table--compact param-table"><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>'

@@ -1,0 +1,105 @@
+name: aiperf
+version: 1.0.0
+display_name: AIPerf 性能测试
+description: |
+  使用 NVIDIA AIPerf 对已部署的 OpenAI 兼容 LLM 服务执行性能压测。
+  默认发送 chat/completions 流式请求，输出 TTFT、ITL、请求延迟、吞吐等指标。
+  业务参数走 JSONL 输入文件；AG_SERVED_URL / AG_SERVED_MODEL_NAME 由平台注入。
+  产物：result.json（Argus schema 2.0）+ aiperf/ 下的 AIPerf 原始 artifact。
+
+role: test
+on_failure: continue
+
+entry: ["/runner/run.sh"]
+input_format: jsonl
+
+image: registry.dev.huawei.com/argus/aiperf:1.0.0
+
+resources:
+  cpu: "4"
+  memory: "8Gi"
+  gpu: { resource: nvidia.com/gpu, count: 0 }
+
+# 性能测试会污染同时进行的其他测量，默认独占服务。
+concurrency:
+  endpoint_exclusive: true
+
+mounts: []
+
+exports: []
+consumes: [AG_SERVED_URL, AG_SERVED_MODEL_NAME]
+
+# 单行合法 JSONL；平台 UI 复制进输入框即可通过校验。
+placeholder: '{"tokenizer":"/models/Qwen3-32B-W8A8","endpoint_type":"chat","streaming":true,"input_tokens_mean":1024,"input_tokens_stddev":0,"output_tokens_mean":16,"output_tokens_stddev":0,"concurrency":1,"request_count":10,"random_seed":11}'
+
+parameters:
+  - name: tokenizer
+    type: string
+    required: false
+    description: "AIPerf --tokenizer 值：本地 tokenizer 目录、HF 模型名或 builtin。缺省依次使用 AG_MODEL_PATH、模型名。"
+
+  - name: endpoint_type
+    type: string
+    required: false
+    description: "AIPerf --endpoint-type，默认 chat；可选 completions、embeddings 等，以 AIPerf 版本支持为准。"
+
+  - name: streaming
+    type: boolean
+    required: false
+    description: "是否流式请求，默认 true。流式才能测 TTFT / ITL。"
+
+  - name: input_tokens_mean
+    type: integer
+    required: false
+    description: "合成输入 token 均值，默认 1024。"
+
+  - name: input_tokens_stddev
+    type: integer
+    required: false
+    description: "合成输入 token 标准差，默认 0。"
+
+  - name: output_tokens_mean
+    type: integer
+    required: false
+    description: "输出 token 均值，默认 16。"
+
+  - name: output_tokens_stddev
+    type: integer
+    required: false
+    description: "输出 token 标准差，默认 0。"
+
+  - name: concurrency
+    type: integer
+    required: false
+    description: "并发请求数，默认 1。"
+
+  - name: request_count
+    type: integer
+    required: false
+    description: "总请求数，默认 10。"
+
+  - name: random_seed
+    type: integer
+    required: false
+    description: "随机种子，默认 11。"
+
+  - name: request_timeout_seconds
+    type: integer
+    required: false
+    description: "单请求超时（秒），默认 600；<=0 时使用 AIPerf 默认值。"
+
+  - name: artifact_subdir
+    type: string
+    required: false
+    description: "AIPerf artifact 在 AG_OUTPUT_DIR 下的子目录，默认 aiperf。"
+
+  - name: allow_request_errors
+    type: boolean
+    required: false
+    description: "为 true 时，AIPerf 有失败请求也按成功返回；默认 false。"
+
+env:
+  ENDPOINT_API_KEY:
+    required: false
+    secret: true
+    description: "Bearer token；设置后传给 AIPerf --api-key，不写入日志或 result.json。"
